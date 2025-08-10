@@ -151,3 +151,93 @@
                                 u50)
         })
         err-not-found))
+
+
+(define-map user-activity principal {
+    markets-created: uint,
+    total-bets: uint,
+    winnings-claimed: uint,
+    total-volume: uint,
+    reputation-score: uint
+})
+
+(define-map market-accuracy uint {
+    creator: principal,
+    resolved: bool,
+    participants: uint,
+    total-volume: uint
+})
+
+(define-public (track-market-creation (market-id uint))
+    (let ((current-stats (default-to {markets-created: u0, total-bets: u0, winnings-claimed: u0, total-volume: u0, reputation-score: u0}
+                                   (map-get? user-activity tx-sender))))
+        (map-set user-activity tx-sender 
+            (merge current-stats {
+                markets-created: (+ (get markets-created current-stats) u1),
+                reputation-score: (+ (get reputation-score current-stats) u10)
+            }))
+        (map-set market-accuracy market-id {
+            creator: tx-sender,
+            resolved: false,
+            participants: u0,
+            total-volume: u0
+        })
+        (ok true)))
+
+(define-public (track-bet-placement (market-id uint) (amount uint))
+    (let ((current-stats (default-to {markets-created: u0, total-bets: u0, winnings-claimed: u0, total-volume: u0, reputation-score: u0}
+                                   (map-get? user-activity tx-sender)))
+          (market-data (default-to {creator: tx-sender, resolved: false, participants: u0, total-volume: u0}
+                                  (map-get? market-accuracy market-id))))
+        (map-set user-activity tx-sender
+            (merge current-stats {
+                total-bets: (+ (get total-bets current-stats) u1),
+                total-volume: (+ (get total-volume current-stats) amount),
+                reputation-score: (+ (get reputation-score current-stats) u5)
+            }))
+        (map-set market-accuracy market-id
+            (merge market-data {
+                participants: (+ (get participants market-data) u1),
+                total-volume: (+ (get total-volume market-data) amount)
+            }))
+        (ok true)))
+
+(define-public (track-winnings-claimed (market-id uint) (payout uint))
+    (let ((current-stats (default-to {markets-created: u0, total-bets: u0, winnings-claimed: u0, total-volume: u0, reputation-score: u0}
+                                   (map-get? user-activity tx-sender))))
+        (map-set user-activity tx-sender
+            (merge current-stats {
+                winnings-claimed: (+ (get winnings-claimed current-stats) u1),
+                reputation-score: (+ (get reputation-score current-stats) u15)
+            }))
+        (ok true)))
+
+(define-public (update-market-resolution (market-id uint))
+    (let ((market-data (unwrap! (map-get? market-accuracy market-id) err-not-found)))
+        (map-set market-accuracy market-id
+            (merge market-data {resolved: true}))
+        (let ((creator-stats (default-to {markets-created: u0, total-bets: u0, winnings-claimed: u0, total-volume: u0, reputation-score: u0}
+                                        (map-get? user-activity (get creator market-data))))
+              (bonus-score (if (> (get participants market-data) u5) u25 u10)))
+            (map-set user-activity (get creator market-data)
+                (merge creator-stats {
+                    reputation-score: (+ (get reputation-score creator-stats) bonus-score)
+                })))
+        (ok true)))
+
+(define-read-only (get-user-activity (user principal))
+    (default-to {markets-created: u0, total-bets: u0, winnings-claimed: u0, total-volume: u0, reputation-score: u0}
+               (map-get? user-activity user)))
+
+(define-read-only (get-market-performance (market-id uint))
+    (map-get? market-accuracy market-id))
+
+(define-read-only (calculate-user-ranking (user principal))
+    (let ((stats (get-user-activity user)))
+        (ok {
+            total-activity: (+ (+ (get markets-created stats) (get total-bets stats)) (get winnings-claimed stats)),
+            reputation-score: (get reputation-score stats),
+            success-rate: (if (> (get total-bets stats) u0)
+                             (/ (* (get winnings-claimed stats) u100) (get total-bets stats))
+                             u0)
+        })))
