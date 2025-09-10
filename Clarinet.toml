@@ -9,6 +9,11 @@ requirements = []
 path = 'contracts/Crop-Yield-Prediction-Market.clar'
 clarity_version = 3
 epoch = 3.1
+
+[contracts.market-insurance]
+path = 'contracts/market-insurance.clar'
+clarity_version = 3
+epoch = 3.1
 [repl.analysis]
 passes = ['check_checker']
 
