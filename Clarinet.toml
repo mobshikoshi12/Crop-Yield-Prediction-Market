@@ -1,0 +1,37 @@
+[project]
+name = 'Crop-Yield-Prediction-Market'
+description = ''
+authors = []
+telemetry = true
+cache_dir = '.\.cache'
+requirements = []
+[contracts.Crop-Yield-Prediction-Market]
+path = 'contracts/Crop-Yield-Prediction-Market.clar'
+clarity_version = 3
+epoch = 3.1
+
+[contracts.market-insurance]
+path = 'contracts/market-insurance.clar'
+clarity_version = 3
+epoch = 3.1
+
+[contracts.dispute-resolution]
+path = 'contracts/dispute-resolution.clar'
+clarity_version = 3
+epoch = 3.1
+[contracts.liquidity-rewards]
+path = 'contracts/liquidity-rewards.clar'
+clarity_version = 3
+epoch = 3.1
+[repl.analysis]
+passes = ['check_checker']
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
